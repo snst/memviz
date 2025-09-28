@@ -1,0 +1,28 @@
+layout:
+  - name: "FIP"
+    start: 0x00000000
+    end: 0x90000
+
+  - name: "FIP Header"
+    start: 0x0000200
+    size: 0x100
+
+  - name: "BL1"
+    start: 0x00000400
+    size: 0x4000
+
+  - name: "BL2_DTB"
+    start: 0x00005000
+    size: 0x8000
+
+  - name: "BL2"
+    start: 0x00005100
+    size: 0x7F00
+
+  - name: "Trusted OS"
+    start: 0x0000D000
+    size: 0x20000
+
+  - name: "Non-secure Payload"
+    start: 0x0002E000
+    size: 0x40000
