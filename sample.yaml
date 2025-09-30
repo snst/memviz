@@ -1,7 +1,7 @@
-layout:
+- layout_QSPI:
   - name: "FIP"
     start: 0x00000000
-    end: 0x90000
+    end: 0x8FFFF
 
   - name: "FIP Header"
     start: 0x0000200
@@ -26,3 +26,14 @@ layout:
   - name: "Non-secure Payload"
     start: 0x0002E000
     size: 0x40000
+
+- layout_RAM:
+  - name: "RAM"
+    start: 0x00000000
+    end: 0xFFFF
+  - name: "Stack"
+    start: 0x4000
+    end: 0xFFFF
+  - name: "Heap"
+    start: 0x500
+    size: 0x500

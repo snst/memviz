@@ -74,8 +74,8 @@ class RamEntry:
         self.name = data.get("name", "")
         if self.end is None and self.size is not None:
             self.end = self.start + self.size - 1
-        if self.size is None and self.end is not None:
-            self.size = self.end + self.start
+        elif self.size is None and self.end is not None:
+            self.size = self.end - self.start + 1
         add_addr_start(self)
         add_addr_end(self)
 
@@ -88,9 +88,10 @@ class RamEntry:
 def load_ram_layout(yaml_path):
     with open(yaml_path, "r") as f:
         data = yaml.safe_load(f)
-    items = data.get("layout", [])
-    for item in items:
-        entries.append(RamEntry(item))
+    return data
+#    items = data.get("layout", [])
+#    for item in items:
+#        entries.append(RamEntry(item))
 
 
 def add_start(ram, y):
@@ -117,6 +118,7 @@ def get_start(ram):
 
 def draw_layout(svg_path):
     font_height = 14
+    font_height_small = 10
     x = 0
     y = font_height
     bar_width = 15
@@ -129,14 +131,20 @@ def draw_layout(svg_path):
     elements2: list[svg.Element] = []
     elements_addr: list[svg.Element] = []
     last_addr = None
+    last_addr_y = None
+    last_addr_is_end = False
     for addr, items in sorted(address_dict.items()):
-        if addr - 1 != last_addr:
+        addr_is_end = False
+        diff = 0
+        if last_addr is not None and addr - 1 != last_addr:
             y += addr_space
+            diff = addr - last_addr
 
         start_y = y
         addr_y = start_y + text_y_offset
 
         for item in items.end:
+            addr_is_end = True
             i, start_bar_y, col = get_start(item)
             text = svg.Text(
                 x=0,
@@ -163,25 +171,40 @@ def draw_layout(svg_path):
             text = svg.Text(
                 x=0,
                 y=y + text_y_offset,
-                text=f"+ {item.name} [0x{(item.size):x}, {item.size}]",
+                text=f"+ {item.name} ~ 0x{(item.size):x}, {item.size}",
                 font_size=14,
                 fill=col,
             )
             elements2.append(text)
             y += font_height
 
+        # write addr
         text = svg.Text(
             x=x, y=addr_y, text=f"0x{addr:08x}", font_size=font_height, fill=addr_color
         )
         elements_addr.append(text)
 
+        # show length between start and end address
+        if diff != 0 and last_addr_y is not None:
+            if addr_is_end:
+                diff += 1
+            if last_addr_is_end:
+                diff -= 1
+            y_pos = (addr_y-last_addr_y) / 2 + last_addr_y
+            text = svg.Text(
+                x=x+5, y=y_pos, text=f"~ 0x{diff:x}, {diff}", font_size=font_height_small, fill=addr_color
+            )
+            elements_addr.append(text)
+
         last_addr = addr
+        last_addr_y = addr_y
+        last_addr_is_end = addr_is_end
 
     desc_x = max(bar_x + len(bars) * bar_width + 5, bar_x)
     for e in elements2:
         e.x += desc_x
 
-    bg = svg.Rect(x=0, y=0, width=300, height=y - addr_space / 2 + 20, fill="#ffffff")
+    bg = svg.Rect(x=0, y=0, width=500, height=y - addr_space / 2 + 20, fill="#ffffff")
     canvas = svg.SVG(
         viewBox=svg.ViewBoxSpec(0, 0, bg.width, bg.height),
         elements=[bg] + elements + elements2 + elements_addr,
@@ -195,6 +218,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Draw RAM layout from YAML file.")
     parser.add_argument("filename", help="YAML file describing RAM layout")
     args = parser.parse_args()
-    layout = load_ram_layout(args.filename)
-    svg_path = os.path.splitext(args.filename)[0] + ".svg"
-    draw_layout(svg_path)
+    layouts = load_ram_layout(args.filename)
+    for layout in layouts:
+        for name, items in layout.items():
+            entries.clear()
+            address_dict.clear()
+            bars.clear()
+            for item in items:
+                entries.append(RamEntry(item))
+
+            svg_path = f"{name}.svg"
+            draw_layout(svg_path)
